@@ -102,9 +102,18 @@ def main():
         print(f"Text for Embedding của pattern đầu tiên:\n>>> {first_processed_pattern.get('text_for_embedding')[:300]}...")
         print("-" * 20)
     
-    # (Chưa ghi file vội, sẽ làm ở các bước sau)
-    # print(f"Sẽ ghi dữ liệu đã xử lý vào: {final_data_path}")
-    
+    # --- BƯỚC CUỐI: GHI DỮ LIỆU ĐÃ XỬ LÝ RA FILE ---
+    if processed_patterns:
+        print(f"Chuẩn bị ghi {len(processed_patterns)} patterns đã xử lý vào file...")
+        try:
+            with open(final_data_path, 'w', encoding='utf-8') as f:
+                json.dump(processed_patterns, f, ensure_ascii=False, indent=2)
+            print(f"Ghi dữ liệu thành công vào: {final_data_path}")
+        except IOError as e:
+            print(f"Lỗi: Không thể ghi file. Chi tiết: {e}")
+    else:
+        print("Không có dữ liệu để ghi.")
+        
     print("Hoàn thành việc thiết lập script.")
 
 
