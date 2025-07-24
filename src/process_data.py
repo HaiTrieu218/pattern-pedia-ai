@@ -71,16 +71,35 @@ def main():
             if 'solution' in processed_pattern:
                 processed_pattern['solution'] = clean_text(processed_pattern['solution'])
 
-            # (Chúng ta sẽ xử lý 'code_examples' ở bước sau)
+            # --- Tái cấu trúc & Tạo các trường mới ---
+            pattern_name = processed_pattern.get('name', '')
+
+            # Ví dụ: "Factory Method" -> "factory-method"
+            pattern_id = pattern_name.lower().replace(' ', '-')
+            processed_pattern['id'] = pattern_id
+
+            # Kết hợp các thông tin quan trọng nhất để AI "học"
+            problem_text = processed_pattern.get('problem', '')
+            solution_text = processed_pattern.get('solution', '')
+
+            # Dùng f-string để tạo một đoạn văn bản giàu ngữ nghĩa
+            text_for_embedding = (
+                f"Pattern Name: {pattern_name}. "
+                f"Problem it solves: {problem_text} "
+                f"Solution: {solution_text}"
+            )
+            processed_pattern['text_for_embedding'] = text_for_embedding
 
             processed_patterns.append(processed_pattern)
 
         print("Đã hoàn thành bước làm sạch văn bản cơ bản.")
         # --- KẾT THÚC XỬ LÝ DỮ LIỆU ---
 
-        # --- BƯỚC KIỂM TRA SAU KHI LÀM SẠCH ---
-        print("Kiểm tra kết quả sau khi làm sạch:")
-        print(f"Problem của pattern đầu tiên:\n>>> {processed_patterns[0].get('problem')[:200]}...") # In ra 200 ký tự đầu
+        # --- BƯỚC KIỂM TRA SAU KHI TÁI CẤU TRÚC ---
+        print("Kiểm tra kết quả sau khi tái cấu trúc:")
+        first_processed_pattern = processed_patterns[0]
+        print(f"ID của pattern đầu tiên: {first_processed_pattern.get('id')}")
+        print(f"Text for Embedding của pattern đầu tiên:\n>>> {first_processed_pattern.get('text_for_embedding')[:300]}...")
         print("-" * 20)
     
     # (Chưa ghi file vội, sẽ làm ở các bước sau)
