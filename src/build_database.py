@@ -35,7 +35,7 @@ def main():
     print("   => Đã chuẩn bị xong.")
 
     # --- Load Mô hình AI ---
-    model_name = 'all-MiniLM-L6-v2'
+    model_name = 'all-mpnet-base-v2'
     print(f"3. Đang tải mô hình Sentence Transformer: '{model_name}'...")
     model = SentenceTransformer(model_name)
     print("   => Tải mô hình thành công.")

@@ -1,121 +1,127 @@
+# file: src/process_data.py
+
 import json
 from pathlib import Path
 
 def clean_text(text: str) -> str:
-    """
-    Nhận một chuỗi văn bản và thực hiện các bước làm sạch cơ bản.
-    - Thay thế các ký tự xuống dòng, tab bằng khoảng trắng.
-    - Loại bỏ các ký tự không thể in được (như \u00a0 - non-breaking space).
-    - Loại bỏ các khoảng trắng thừa.
-    """
+    """Làm sạch một chuỗi văn bản."""
     if not isinstance(text, str):
-        return "" # Trả về chuỗi rỗng nếu đầu vào không phải là string
-
-    # Thay thế ký tự xuống dòng và tab bằng khoảng trắng
+        return ""
     text = text.replace('\n', ' ').replace('\t', ' ')
-    
-    # Loại bỏ các ký tự đặc biệt (ví dụ: \u00a0)
-    # Bằng cách chỉ giữ lại các ký tự có thể in được (printable)
     text = ''.join(char for char in text if char.isprintable())
-    
-    # Loại bỏ các khoảng trắng thừa ở giữa chuỗi
-    # Bằng cách tách chuỗi thành các từ rồi nối lại
     cleaned_text = ' '.join(text.split())
-    
     return cleaned_text
 
+def clean_list_of_strings(string_list: list) -> list:
+    """Làm sạch từng chuỗi trong một danh sách."""
+    if not isinstance(string_list, list):
+        return []
+    # Trả về danh sách các chuỗi đã được làm sạch, loại bỏ các chuỗi rỗng
+    return [clean_text(s) for s in string_list if clean_text(s)]
+
 def main():
-    """
-    Hàm chính để thực thi kịch bản xử lý dữ liệu.
-    """
-    # Xác định đường dẫn gốc của dự án
-    # Path(__file__) là file hiện tại (process_data.py)
-    # .parent là thư mục chứa nó (src)
-    # .parent một lần nữa là thư mục gốc của dự án (PatternPedia)
+    """Hàm chính để thực thi kịch bản xử lý dữ liệu."""
     project_root = Path(__file__).parent.parent
     
-    # Đường dẫn tới các file dữ liệu
-    structured_data_path = project_root / "data" / "structured_data.json"
+    # Đọc từ file dữ liệu thô đầy đủ nhất
+    raw_data_path = project_root / "data" / "structured_data.json"
     final_data_path = project_root / "data" / "patterns_final.json"
     
-    print(f"Đang đọc dữ liệu từ: {structured_data_path}")
+    print(f"Đang đọc dữ liệu từ: {raw_data_path}")
     
-    # Mở và đọc file JSON thô
     try:
-        with open(structured_data_path, 'r', encoding='utf-8') as f:
-            structured_data = json.load(f)
+        with open(raw_data_path, 'r', encoding='utf-8') as f:
+            raw_data = json.load(f)
     except FileNotFoundError:
-        print(f"Lỗi: Không tìm thấy file {structured_data_path}. Hãy chắc chắn bạn đã chạy scraper trước.")
+        print(f"Lỗi: Không tìm thấy file {raw_data_path}. Hãy chắc chắn bạn đã chạy scraper trước.")
         return
     except json.JSONDecodeError:
-        print(f"Lỗi: File {structured_data_path} không phải là một file JSON hợp lệ.")
+        print(f"Lỗi: File {raw_data_path} không phải là một file JSON hợp lệ.")
         return
 
-    # --- BƯỚC KIỂM TRA ---
-    print(f"Đọc thành công! Tổng cộng có {len(structured_data)} patterns.")
+    print(f"Đọc thành công! Tổng cộng có {len(raw_data)} patterns.")
     
-    if structured_data:
-        print(f"Tên pattern đầu tiên: {structured_data[0].get('name')}")
-        print("-" * 20)
+    if not raw_data:
+        print("Không có dữ liệu để xử lý.")
+        return
         
-        # --- BẮT ĐẦU XỬ LÝ DỮ LIỆU ---
-        processed_patterns = []
-        for pattern in structured_data:
-            # Tạo một bản sao của pattern để xử lý, tránh thay đổi dữ liệu gốc
-            processed_pattern = pattern.copy()
+    processed_patterns = []
+    for pattern in raw_data:
+        processed_pattern = {}
 
-            # Áp dụng hàm làm sạch cho các trường văn bản
-            if 'problem' in processed_pattern:
-                processed_pattern['problem'] = clean_text(processed_pattern['problem'])
+        # --- LÀM SẠCH VÀ CHUẨN HÓA CÁC TRƯỜNG DỮ LIỆU ---
+        
+        # Các trường dạng chuỗi đơn
+        processed_pattern['name'] = clean_text(pattern.get('name', ''))
+        processed_pattern['url'] = pattern.get('url', '')
+        processed_pattern['category'] = clean_text(pattern.get('category', ''))
+        processed_pattern['intent'] = clean_text(pattern.get('intent', ''))
+        processed_pattern['problem'] = clean_text(pattern.get('problem', ''))
+        processed_pattern['solution'] = clean_text(pattern.get('solution', ''))
+        processed_pattern['uml_image_url'] = pattern.get('uml_image_url', '')
+        # **BỔ SUNG CÁC TRƯỜNG MỚI (DẠNG CHUỖI)**
+        processed_pattern['structure_text'] = clean_text(pattern.get('structure_text', ''))
+        processed_pattern['pseudocode'] = clean_text(pattern.get('pseudocode', ''))
+        processed_pattern['applicability'] = clean_text(pattern.get('applicability', ''))
 
-            if 'solution' in processed_pattern:
-                processed_pattern['solution'] = clean_text(processed_pattern['solution'])
+        # Các trường dạng danh sách chuỗi
+        processed_pattern['pros'] = clean_list_of_strings(pattern.get('pros', []))
+        processed_pattern['cons'] = clean_list_of_strings(pattern.get('cons', []))
+        processed_pattern['relations'] = clean_list_of_strings(pattern.get('relations', []))
+        # **BỔ SUNG CÁC TRƯỜNG MỚI (DẠNG LIST)**
+        processed_pattern['how_to_implement'] = clean_list_of_strings(pattern.get('how_to_implement', []))
+        processed_pattern['extra_content'] = clean_list_of_strings(pattern.get('extra_content', []))
+        
+        # --- TẠO CÁC TRƯỜDỮ LIỆU MỚI ---
+        pattern_name = processed_pattern.get('name', '')
+        pattern_id = pattern_name.lower().replace(' ', '-').replace('/', '-')
+        processed_pattern['id'] = pattern_id
 
-            # --- Tái cấu trúc & Tạo các trường mới ---
-            pattern_name = processed_pattern.get('name', '')
+        
+        intent_text = processed_pattern.get('intent', '')
+        applicability_text = processed_pattern.get('applicability', '')
+        problem_text = processed_pattern.get('problem', '')
 
-            # Ví dụ: "Factory Method" -> "factory-method"
-            pattern_id = pattern_name.lower().replace(' ', '-')
-            processed_pattern['id'] = pattern_id
+        # Lấy ưu điểm đầu tiên, thường là ưu điểm quan trọng nhất
+        first_pro = processed_pattern.get('pros', [''])[0] if processed_pattern.get('pros') else ''
 
-            # Kết hợp các thông tin quan trọng nhất để AI "học"
-            problem_text = processed_pattern.get('problem', '')
-            solution_text = processed_pattern.get('solution', '')
+        text_for_embedding = (
+            f"The main intent of this pattern is: {intent_text}. "
+            f"In summary, the goal is: {intent_text}. " # Lặp lại Intent
+            f"You should use this pattern when: {applicability_text}. "
+            f"It is designed to solve the following problem: {problem_text}. "
+            f"A key benefit is: {first_pro}"
+        )
 
-            # Dùng f-string để tạo một đoạn văn bản giàu ngữ nghĩa
-            text_for_embedding = (
-                f"Pattern Name: {pattern_name}. "
-                f"Problem it solves: {problem_text} "
-                f"Solution: {solution_text}"
-            )
-            processed_pattern['text_for_embedding'] = text_for_embedding
+        # Làm sạch lần cuối để đảm bảo
+        processed_pattern['text_for_embedding'] = clean_text(text_for_embedding)
 
-            processed_patterns.append(processed_pattern)
+        processed_patterns.append(processed_pattern)
 
-        print("Đã hoàn thành bước làm sạch văn bản cơ bản.")
-        # --- KẾT THÚC XỬ LÝ DỮ LIỆU ---
+    print("Hoàn thành xử lý và làm sạch tất cả các trường dữ liệu.")
 
-        # --- BƯỚC KIỂM TRA SAU KHI TÁI CẤU TRÚC ---
-        print("Kiểm tra kết quả sau khi tái cấu trúc:")
-        first_processed_pattern = processed_patterns[0]
-        print(f"ID của pattern đầu tiên: {first_processed_pattern.get('id')}")
-        print(f"Text for Embedding của pattern đầu tiên:\n>>> {first_processed_pattern.get('text_for_embedding')[:300]}...")
-        print("-" * 20)
-    
-    # --- BƯỚC CUỐI: GHI DỮ LIỆU ĐÃ XỬ LÝ RA FILE ---
+    # --- KIỂM TRA ---
+    print("\n" + "="*20)
+    print("KIỂM TRA KẾT QUẢ CUỐI CÙNG")
+    print("="*20)
     if processed_patterns:
-        print(f"Chuẩn bị ghi {len(processed_patterns)} patterns đã xử lý vào file...")
-        try:
-            with open(final_data_path, 'w', encoding='utf-8') as f:
-                json.dump(processed_patterns, f, ensure_ascii=False, indent=2)
-            print(f"Ghi dữ liệu thành công vào: {final_data_path}")
-        except IOError as e:
-            print(f"Lỗi: Không thể ghi file. Chi tiết: {e}")
-    else:
-        print("Không có dữ liệu để ghi.")
-        
-    print("Hoàn thành việc thiết lập script.")
+        first_pattern = processed_patterns[0]
+        print(f"ID: {first_pattern.get('id')}")
+        print(f"Name: {first_pattern.get('name')}")
+        print(f"Structure text (trích đoạn): {first_pattern.get('structure_text', '')[:100]}...")
+        print(f"Pros (mục đầu tiên): {first_pattern.get('pros', ['N/A'])[0]}")
 
+    # --- GHI FILE ---
+    print("\n" + "="*20)
+    print(f"Chuẩn bị ghi {len(processed_patterns)} patterns vào file: {final_data_path}")
+    try:
+        with open(final_data_path, 'w', encoding='utf-8') as f:
+            json.dump(processed_patterns, f, ensure_ascii=False, indent=2)
+        print(f"GHI DỮ LIỆU THÀNH CÔNG!")
+    except IOError as e:
+        print(f"LỖI: Không thể ghi file. Chi tiết: {e}")
+        
+    print("Hoàn thành script.")
 
 if __name__ == "__main__":
     main()
