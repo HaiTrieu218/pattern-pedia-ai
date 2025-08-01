@@ -1,20 +1,23 @@
 import json
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
-import numpy as np # Thường dùng để lưu file numpy
+import time
+import chromadb
+
+# --- CẤU HÌNH ---
+# THÊM DÒNG NÀY VÀO:
+COLLECTION_NAME = "design_patterns" 
 
 def main():
     """
     Hàm chính để xây dựng cơ sở dữ liệu vector.
-    ... (docstring giữ nguyên)
     """
     print("--- Bắt đầu Script Xây dựng Cơ sở dữ liệu Vector ---")
     
-    # --- CÔNG ĐOẠN 1: ĐỊNH NGHĨA ĐƯỜNG DẪN ---
+    # --- Đọc Dữ liệu ---
     project_root = Path(__file__).parent.parent
     final_data_path = project_root / "data" / "patterns_final.json"
     
-    # --- CÔNG ĐOẠN 2: ĐỌC DỮ LIỆU ĐÃ XỬ LÝ ---
     print(f"1. Đang đọc dữ liệu từ: {final_data_path}")
     try:
         with open(final_data_path, 'r', encoding='utf-8') as f:
@@ -24,29 +27,51 @@ def main():
         print(f"Lỗi: Không tìm thấy file {final_data_path}. Hãy chạy 'process_data.py' trước.")
         return
 
-    # --- CÔNG ĐOẠN 3: LOAD MÔ HÌNH AI ---
+    # --- Chuẩn bị dữ liệu cho ChromaDB (THÊM PHẦN NÀY VÀO) ---
+    print("2. Đang chuẩn bị các danh sách (ids, documents, metadatas)...")
+    ids = [p['id'] for p in patterns_data]
+    documents = [p['text_for_embedding'] for p in patterns_data]
+    metadatas = [{'name': p['name'], 'url': p['url']} for p in patterns_data]
+    print("   => Đã chuẩn bị xong.")
+
+    # --- Load Mô hình AI ---
     model_name = 'all-MiniLM-L6-v2'
-    print(f"2. Đang tải mô hình Sentence Transformer: '{model_name}'...")
+    print(f"3. Đang tải mô hình Sentence Transformer: '{model_name}'...")
     model = SentenceTransformer(model_name)
     print("   => Tải mô hình thành công.")
 
-    # --- CÔNG ĐOẠN 4: CHUẨN BỊ DỮ LIỆU ĐỂ MÃ HÓA ---
-    print("3. Đang chuẩn bị dữ liệu để mã hóa...")
-    texts_to_encode = [pattern['text_for_embedding'] for pattern in patterns_data]
-    print(f"   => Đã có {len(texts_to_encode)} đoạn văn bản cần mã hóa.")
-    
-    # --- CÔNG ĐOẠN 5: MÃ HÓA DỮ LIỆU ---
+    # --- Mã hóa Dữ liệu ---
     print("4. Bắt đầu quá trình mã hóa (có thể mất một chút thời gian)...")
-    embeddings = model.encode(texts_to_encode, show_progress_bar=True)
+    # Thay texts_to_encode thành documents
+    embeddings = model.encode(documents, show_progress_bar=True)
     print("   => Mã hóa hoàn tất!")
     print(f"   => Kích thước của ma trận embedding: {embeddings.shape}")
     
-    # Ở các bước sau, chúng ta sẽ thêm code để lưu embeddings vào ChromaDB ở đây.
-    # Ví dụ: save_to_chromadb(patterns_data, embeddings)
+    # --- Lưu trữ vào ChromaDB ---
+    print("5. Đang thiết lập và lưu trữ vào ChromaDB...")
+    db_path = project_root / "db"
+    client = chromadb.PersistentClient(path=str(db_path))
+    
+    if COLLECTION_NAME in [c.name for c in client.list_collections()]:
+        print(f"   Collection '{COLLECTION_NAME}' đã tồn tại. Đang xóa để xây dựng lại...")
+        client.delete_collection(name=COLLECTION_NAME)
 
-    print("--- Hoàn thành Script ---")
+    collection = client.create_collection(name=COLLECTION_NAME)
+    
+    # Sửa lại `embeddings.tolist()` nếu embeddings là numpy array
+    collection.add(
+        embeddings=embeddings.tolist(),
+        documents=documents,
+        metadatas=metadatas,
+        ids=ids
+    )
+    print("   => Đã thêm thành công toàn bộ dữ liệu vào ChromaDB.")
+    
+    count = collection.count()
+    print(f"   Kiểm tra: Collection '{COLLECTION_NAME}' hiện có {count} mục.")
+    
+    print("--- Kịch bản xây dựng cơ sở dữ liệu đã hoàn thành! ---")
 
 
 if __name__ == "__main__":
-    # Dòng này đảm bảo hàm main() chỉ chạy khi file này được thực thi trực tiếp
     main()
