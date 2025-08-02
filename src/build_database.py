@@ -56,7 +56,10 @@ def main():
         print(f"   Collection '{COLLECTION_NAME}' đã tồn tại. Đang xóa để xây dựng lại...")
         client.delete_collection(name=COLLECTION_NAME)
 
-    collection = client.create_collection(name=COLLECTION_NAME)
+    collection = client.create_collection(
+    name=COLLECTION_NAME,
+    metadata={"hnsw:space": "cosine"}  # Báo cho ChromaDB dùng thước đo Cosine
+)
     
     # Sửa lại `embeddings.tolist()` nếu embeddings là numpy array
     collection.add(

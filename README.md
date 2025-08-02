@@ -89,5 +89,5 @@ You must run this pipeline once to populate the vector database.
 Once the data is indexed, you can start the Streamlit application.
 
 ```bash
-streamlit run app.py
 ```
+python -m streamlit run app/app.py
